@@ -4,22 +4,31 @@ require('colors');
 require('dotenv')
 const generateAPIKey = require('./lib/hashing');
 const { webhookSecret } = require('./options');
+const crypto = require('crypto');
 
 module.exports = function(schema, options) {
   console.log('[System] I cannot check if your stripe key is valid until a user try to use a stripe service, make sure that it is'.yellow)
 
   options = options || {};
+
   options.successUrl = options.successUrl || 'http://localhost:3000/';
   options.cancelUrl = options.cancelUrl || 'http://localhost:3000/';
+
   options.stripeSecret = options.stripeSecret || null;
   options.webhookSecret = options.webhookSecret || null;
   options.priceId = options.priceId || null;
-  options.bytesApiKey = options.bytesApiKey || 16;
-  options.hashAlgorithm = options.hashAlgorithm || 'sha256';
+
   options.apiKeyField = options.apiKeyField || 'apiKey';
+  options.saltField = options.saltField || 'salt'
   options.apiKeyFieldQuery = options.apiKeyFieldQuery || 'apiKey';
   options.customerIdField =  options.customerIdField || 'customerId';
   options.subscriptionIdField = options.subscriptionIdField || 'subscriptionId';
+
+  options.bytesApiKey = options.bytesApiKey || 16;
+  options.iterations = options.iterations || 25000;
+  options.salten = options.salten || 'f019832affcc06784b0f8ce25c1c2fd914d8c0261722d9e2bba0cb602a8a4d15';
+  options.keylen = options.keylen || 512;
+  options.digest = options.digest || 'sha256'
 
   if(!options.stripeSecret){
     console.log('[Error] You must add a stripe secret key to the params'.red)
@@ -110,10 +119,10 @@ module.exports = function(schema, options) {
         const itemId = subscription.items.data[0].id;
 
         // Generate API key
-        const apiKeys = await generateAPIKey(options.bytesApiKey, options.hashAlgorithm, this, options);
+        const apiKeys = await generateAPIKey(this, options);
 
         // Store the API key in your database.
-        user[options.apiKeyField] = apiKeys.hashedAPIKey;
+        user[options.apiKeyField] = apiKeys.encryptedApiKey;
         user[options.customerIdField] = customerId;
         user[options.subscriptionIdField] = subscriptionId;
         await user.save()
@@ -144,31 +153,35 @@ module.exports = function(schema, options) {
   schema.statics.api = async function(req, res, dataToSend) {
     const apiKey = req.query[options.apiKeyFieldQuery];
 
-    const user = await this.find({apiKey: apiKey});
-    if(user.length === 0){
-      res.sendStatus(403);
-      return;
-    }
-
     if(!apiKey){
       res.sendStatus(400); // bad request
       return;
     }
 
-    if(!user[options.customerIdField].active){
+    let encryptedApiKey;
+    try{
+      encryptedApiKey = crypto.pbkdf2Sync(apiKey, options.salten, options.iterations, options.keylen, options.digest).toString('hex');
+    }catch(e) {
+      console.log(`[Error] ${error}`.red)
+      return;
+    }
+
+    const user = this.findOne({[options.apiKey]: encryptedApiKey})
+
+    if(user.length === 0){
       res.sendStatus(403);
       return;
-    } else{
-      const record = await stripe.subscriptionItems.createUsageRecord(
-        user[options.subscriptionIdField],
-        {
-          quantity: 1,
-          timestamp: 'now',
-          action: 'increment'
-        }
-      );
-
-      res.send(dataToSend);
     }
+
+    const record = await stripe.subscriptionItems.createUsageRecord(
+      user[options.subscriptionIdField],
+      {
+        quantity: 1,
+        timestamp: 'now',
+        action: 'increment'
+      }
+    )
+
+    res.send(dataToSend);
   }
 }

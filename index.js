@@ -18,17 +18,20 @@ module.exports = function(schema, options) {
   options.webhookSecret = options.webhookSecret || null;
   options.priceId = options.priceId || null;
 
+  options.showUsage = options.showUsage || false;
+
   options.apiKeyField = options.apiKeyField || 'apiKey';
   options.saltField = options.saltField || 'salt'
   options.apiKeyFieldQuery = options.apiKeyFieldQuery || 'apiKey';
   options.customerIdField =  options.customerIdField || 'customerId';
   options.subscriptionIdField = options.subscriptionIdField || 'subscriptionId';
+  options.itemIdField = options.itemIdField || 'ItemId';
 
   options.bytesApiKey = options.bytesApiKey || 16;
   options.iterations = options.iterations || 25000;
   options.salten = options.salten || 'f019832affcc06784b0f8ce25c1c2fd914d8c0261722d9e2bba0cb602a8a4d15';
   options.keylen = options.keylen || 512;
-  options.digest = options.digest || 'sha256'
+  options.digest = options.digest || 'sha256';
 
   if(!options.stripeSecret){
     console.log('[Error] You must add a stripe secret key to the params'.red)
@@ -42,6 +45,9 @@ module.exports = function(schema, options) {
   // adding apiKey field to the schema
   const schemaFields = {};
   schemaFields[options.apiKeyField] = {type: String, select: true};
+  schemaFields[options.customerIdField] = {type: String, select: true};
+  schemaFields[options.subscriptionIdField] = {type: String, select: true};
+  schemaFields[options.itemIdField] = {type: String, select: true};
   schema.add(schemaFields);
 
   schema.statics.subscribeUser = async function(user, res) {
@@ -125,6 +131,7 @@ module.exports = function(schema, options) {
         user[options.apiKeyField] = apiKeys.encryptedApiKey;
         user[options.customerIdField] = customerId;
         user[options.subscriptionIdField] = subscriptionId;
+        user[options.itemIdField] = itemId;
         await user.save()
 
         console.log(
@@ -166,7 +173,7 @@ module.exports = function(schema, options) {
       return;
     }
 
-    const user = this.findOne({[options.apiKey]: encryptedApiKey})
+    const user = await this.findOne({[options.apiKey]: encryptedApiKey})
 
     if(user.length === 0){
       res.sendStatus(403);
@@ -174,7 +181,7 @@ module.exports = function(schema, options) {
     }
 
     const record = await stripe.subscriptionItems.createUsageRecord(
-      user[options.subscriptionIdField],
+      user[options.itemIdField],
       {
         quantity: 1,
         timestamp: 'now',
@@ -182,6 +189,28 @@ module.exports = function(schema, options) {
       }
     )
 
+    if(options.showUsage){
+      dataToSend = {...dataToSend, usage: record}
+    }
     res.send(dataToSend);
+  }
+
+  schema.methods.customerRecords = async function(res){
+    const invoice = await stripe.invoices.retrieveUpcoming({
+      customer: this[options.customerIdField]
+    })
+
+    res.send(invoice)
+  }
+
+  schema.statics.changeApiKey = async function(user) {
+    if(user[options.apiKeyField] !== 'null') {
+      const apiKeys = await generateAPIKey(this, options);
+
+      user[options.apiKeyField] = apiKeys.encryptedApiKey;
+      await user.save()
+
+      return apiKeys;
+    }
   }
 }

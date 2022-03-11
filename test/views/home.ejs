@@ -1,4 +1,13 @@
-<a href="/checkout" style="font-size: 30px; font-weight: 700; margin: 2px;">Checkout</a>
-<form action="/api">
-  <input type="text" name="apiKey"> 
+<a href="/checkout" style="font-size: 25px; font-weight: 700;">Checkout and subscribe user</a>
+<form style="margin-top: 10px;" action="/api">
+  <label for="apiKey">Test api</label>
+  <input id="apiKey" type="text" name="apiKey"> 
+</form>
+<form action="/usage">
+  <label for="customer">Get customer invoice</label>
+  <input id="customer" type="text" name="customer"> 
+</form>
+<form action="/changeapikey">
+  <label for="change">Change the api key</label>
+  <input id="change" type="text" name="id"> 
 </form>

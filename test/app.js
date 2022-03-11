@@ -51,6 +51,17 @@ app.get('/api', (req, res) => {
   User.api(req, res, {italy: 'hi from italy'})
 })
 
+app.get('/usage', async (req, res) =>{
+  const user = await User.findById(req.query.customer);
+  user.customerRecords(res)
+})
+
+app.get('/changeapikey', async(req, res) => {
+  const user = await User.findById(req.query.id);
+  const key = await User.changeApiKey(user);
+  res.send(key)
+})
+
 const PORT =  process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Serving on port ${PORT}`);

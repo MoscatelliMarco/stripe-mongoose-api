@@ -35,7 +35,7 @@ app.set('views', path.join(__dirname, 'views'));
 const User = require('./userModel');
 
 app.get('/', (req, res) => {
-  res.render('home')
+  res.render('home');
 })
 
 app.get('/checkout', async (req, res) => {
@@ -44,7 +44,7 @@ app.get('/checkout', async (req, res) => {
 
 app.post('/webhook', async (req, res) => {
   const user = await User.findOne({})
-  User.webhook(user, req, res)
+  User.webhook(req, res)
 })
 
 app.get('/api', (req, res) => {

@@ -3,7 +3,6 @@ const fs = require('fs');
 require('colors');
 require('dotenv')
 const generateAPIKey = require('./lib/hashing');
-const { webhookSecret } = require('./options');
 const crypto = require('crypto');
 
 module.exports = function(schema, options) {
@@ -15,14 +14,13 @@ module.exports = function(schema, options) {
   options.cancelUrl = options.cancelUrl || 'http://localhost:3000/';
 
   options.stripeSecret = options.stripeSecret || null;
-  options.webhookSecret = options.webhookSecret || null;
+  options.webhookSign = options.webhookSign || null;
   options.priceId = options.priceId || null;
 
   options.showUsage = options.showUsage || false;
 
   options.apiKeyField = options.apiKeyField || 'apiKey';
   options.saltField = options.saltField || 'salt'
-  options.apiKeyFieldQuery = options.apiKeyFieldQuery || 'apiKey';
   options.customerIdField =  options.customerIdField || 'customerId';
   options.subscriptionIdField = options.subscriptionIdField || 'subscriptionId';
   options.itemIdField = options.itemIdField || 'ItemId';
@@ -36,7 +34,7 @@ module.exports = function(schema, options) {
   if(!options.stripeSecret){
     console.log('[Error] You must add a stripe secret key to the params'.red)
   }
-  if(!options.webhookSecret){
+  if(!options.webhookSign){
     console.log('[Error] You must add a stripe sign key to the params'.red)
   }
 
@@ -57,15 +55,14 @@ module.exports = function(schema, options) {
         user.set(options.apiKeyField, 'null');
         await user.save()
       } catch(e) {
-        console.log(`[Error] ${e}`.red);
-        res.redirect(options.errorUrl || 'http://localhost:3000/')
-        return;
+        throw new Error(`InvalidUserError: ${e}`)
       }
     }else{
       user.set(options.apiKeyField, 'null');
       await user.save()
     } 
-    const session = await stripe.checkout.sessions.create({
+    try {
+      const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
@@ -73,49 +70,48 @@ module.exports = function(schema, options) {
           price: options.priceId
         }
       ],
+      client_reference_id: user._id.toString(),
       success_url: options.successUrl,
       cancel_url: options.cancelUrl
-    });
+      })
 
-    res.redirect(session.url);
+      res.redirect(session.url);
+      return user;
+    } catch(e) {
+      throw new Error(`InvalidStripeOptions: ${e}`)
+    }
   }
 
-  schema.statics.webhook = async function(user, req, res) {
-    if(!user){
-      console.log("[Error] This user doesn't exist");
-      return;
-    }
-    let data;
-    let eventType;
-    // Check if webhook signing is configured.
+  schema.statics.webhook = async function(req, res) {
+    // Retrieve the event by verifying the signature using the raw body and secret.
+    let event;
+    let signature = req.headers['stripe-signature'];
 
-    if (webhookSecret) {
-      // Retrieve the event by verifying the signature using the raw body and secret.
-      let event;
-      let signature = req.headers['stripe-signature'];
-
-      try {
-        event = stripe.webhooks.constructEvent(
-          req['rawBody'],
-          signature,
-          webhookSecret
-        );
-      } catch (err) {
-        console.log(`⚠️  Webhook signature verification failed.`);
-        return res.sendStatus(400);
-      }
-      // Extract the object from the event.
-      data = event.data;
-      eventType = event.type;
-    } else {
-      // Webhook signing is recommended, but if the secret is not configured in `config.js`,
-      // retrieve the event data directly from the request body.
-      data = req.body.data;
-      eventType = req.body.type;
+    try {
+      event = stripe.webhooks.constructEvent(
+        req['rawBody'],
+        signature,
+        options.webhookSign
+      );
+    } catch (err) {    
+      res.sendStatus(400);
+      throw new Error('InvalidStripeOptions: ' + err)
     }
+    // Extract the object from the event.
+    let data = event.data;
+    let eventType = event.type;
+
 
     switch (eventType) {
       case 'checkout.session.completed':
+        // Check if the user exist
+        let clientReferenceId = event.data.object.client_reference_id;
+        const user = await this.findById(clientReferenceId);
+        if(user.length === 0){
+          res.sendStatus(403);
+          return;
+        }
+
         // Data included in the event object:
         const customerId = data.object.customer;
         const subscriptionId = data.object.subscription;
@@ -137,37 +133,23 @@ module.exports = function(schema, options) {
         console.log(
           `[System] Customer ${customerId} subscribed to plan ${subscriptionId}, the generated api Key is ${apiKeys.apiKey}`.yellow
         );
-
-
-        break;
-      case 'invoice.paid':
-        // Continue to provision the subscription as payments continue to be made.
-        // Store the status in your database and check when a user accesses your service.
-        // This approach helps you avoid hitting rate limits.
-        break;
-      case 'invoice.payment_failed':
-        // The payment failed or the customer does not have a valid payment method.
-        // The subscription becomes past_due. Notify your customer and send them to the
-        // customer portal to update their payment information.
         break;
       default:
-      // Unhandled event type
   }
 
   res.sendStatus(200);
   }
 
-  schema.statics.api = async function(req, res, dataToSend) {
-    const apiKey = req.query[options.apiKeyFieldQuery];
+  schema.statics.api = async function(res, dataToSend, api) {
 
-    if(!apiKey){
+    if(!api){
       res.sendStatus(400); // bad request
       return;
     }
 
     let encryptedApiKey;
     try{
-      encryptedApiKey = crypto.pbkdf2Sync(apiKey, options.salten, options.iterations, options.keylen, options.digest).toString('hex');
+      encryptedApiKey = crypto.pbkdf2Sync(api, options.salten, options.iterations, options.keylen, options.digest).toString('hex');
     }catch(e) {
       console.log(`[Error] ${error}`.red)
       return;
@@ -192,7 +174,7 @@ module.exports = function(schema, options) {
     if(options.showUsage){
       dataToSend = {...dataToSend, usage: record}
     }
-    res.send(dataToSend);
+    res.json(JSON.stringify(dataToSend));
   }
 
   schema.methods.customerRecords = async function(res){
@@ -200,7 +182,7 @@ module.exports = function(schema, options) {
       customer: this[options.customerIdField]
     })
 
-    res.send(invoice)
+    res.json(JSON.stringify(invoice))
   }
 
   schema.statics.changeApiKey = async function(user) {
@@ -212,5 +194,6 @@ module.exports = function(schema, options) {
 
       return apiKeys;
     }
+    return 'User without api key';
   }
 }

@@ -48,7 +48,7 @@ app.post('/webhook', async (req, res) => {
 })
 
 app.get('/api', (req, res) => {
-  User.api(req, res, {italy: 'hi from italy'})
+  User.api(res, {italy: 'hi from italy'}, req.query.apiKey)
 })
 
 app.get('/usage', async (req, res) =>{

@@ -1,9 +1,6 @@
-const res = require('express/lib/response');
-const fs = require('fs');
-require('colors');
-require('dotenv')
 const generateAPIKey = require('./lib/hashing');
 const crypto = require('crypto');
+require('colors');
 
 module.exports = function(schema, options) {
   console.log('[System] I cannot check if your stripe key is valid until a user try to use a stripe service, make sure that it is'.yellow)
@@ -53,6 +50,9 @@ module.exports = function(schema, options) {
       try{
         user = await new this(user);
         user.set(options.apiKeyField, 'null');
+        user.set(options.customerIdField, 'null');
+        user.set(options.subscriptionIdField, 'null');
+        user.set(options.itemIdField, 'null')
         await user.save()
       } catch(e) {
         throw new Error(`InvalidUserError: ${e}`)
@@ -101,7 +101,6 @@ module.exports = function(schema, options) {
     let data = event.data;
     let eventType = event.type;
 
-
     switch (eventType) {
       case 'checkout.session.completed':
         // Check if the user exist
@@ -133,6 +132,17 @@ module.exports = function(schema, options) {
         console.log(
           `[System] Customer ${customerId} subscribed to plan ${subscriptionId}, the generated api Key is ${apiKeys.apiKey}`.yellow
         );
+        break;
+      case 'invoice.created':
+        if(event.data.object.status === 'draft'){
+          const user = await this.updateOne({[options.subscriptionIdField]: event.data.object.subscription},
+            {
+              [options.apiKeyField]:'null',
+              [options.customerIdField]: 'null',
+              [options.subscriptionIdField]: 'null',
+              [options.itemIdField]: 'null'
+          });
+        }
         break;
       default:
   }

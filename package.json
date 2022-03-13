@@ -24,6 +24,7 @@
   },
   "homepage": "https://github.com/MoscatelliMarco/api-system-stripe-gateaway#readme",
   "dependencies": {
+    "colors": "^1.4.0",
     "crypto": "^1.0.1",
     "mongoose": "^6.2.4",
     "stripe": "^8.207.0"

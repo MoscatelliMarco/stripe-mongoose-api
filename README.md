@@ -102,6 +102,10 @@ The hearth of the application, it will check if the user exist and the validity 
 #### changeApiKey(user)
 This method will simply provide a new apiKey to then user and the it will return an object with { apiKey, hashedApiKey } , if the user does not have an api it will return 'user.api.failed'
 
+## Thanks you for the support
+[![Stargazers repo roster for @MoscatelliMarco/stripe-mongoose-api](https://reporoster.com/stars/MoscatelliMarco/stripe-mongoose-api)](https://github.com/MoscatelliMarco/stripe-mongoose-api/stargazers)
+[![Forkers repo roster for @MoscatelliMarco/stripe-mongoose-api](https://reporoster.com/forks/MoscatelliMarco/stripe-mongoose-api)](https://github.com/MoscatelliMarco/stripe-mongoose-api/network/members)
+
 ## License
 
 Stripe Mongoose Api is licenses under the [MIT license](https://opensource.org/licenses/MIT).

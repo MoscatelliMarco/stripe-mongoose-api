@@ -32,10 +32,10 @@ module.exports = function(schema, options) {
   options.digest = options.digest || 'sha256';
 
   if(!options.stripeSecret){
-    console.log('[Error] You must add a stripe secret key to the params'.red)
+    throw Error('MissingStripeSecretKey')
   }
   if(!options.webhookSign){
-    console.log('[Error] You must add a stripe sign key to the params'.red)
+    throw Error('MissingStripeSignKey')
   }
 
   const stripe = require('stripe')(options.stripeSecret)
@@ -151,8 +151,7 @@ module.exports = function(schema, options) {
     try{
       encryptedApiKey = crypto.pbkdf2Sync(api, options.salten, options.iterations, options.keylen, options.digest).toString('hex');
     }catch(e) {
-      console.log(`[Error] ${error}`.red)
-      return;
+      throw new Error('InvalidHashingOptions: ' + e)
     }
 
     const user = await this.findOne({[options.apiKey]: encryptedApiKey})
@@ -194,6 +193,6 @@ module.exports = function(schema, options) {
 
       return apiKeys;
     }
-    return 'User without api key';
+    return 'user.api.failed';
   }
 }

@@ -1,7 +1,7 @@
 {
-  "name": "stripe-api-system",
+  "name": "stripe-mongoose-api",
   "version": "1.0.0",
-  "description": "A mongoose plugin that allows stripe payments per request in an api",
+  "description": "Stripe Mongoose Api is a Mongoose plugin that simplifies building checkout and payment system for apis with stripe.",
   "main": "index.js",
   "scripts": {
     "test": "node ./test/app.js"
@@ -24,13 +24,12 @@
   },
   "homepage": "https://github.com/MoscatelliMarco/api-system-stripe-gateaway#readme",
   "dependencies": {
-    "colors": "^1.4.0",
     "crypto": "^1.0.1",
-    "dotenv": "^16.0.0",
-    "ejs": "^3.1.6",
-    "express": "^4.17.3",
     "mongoose": "^6.2.4",
-    "passport-local-mongoose": "^6.1.0",
     "stripe": "^8.207.0"
+  },
+  "directories": {
+    "lib": "lib",
+    "test": "test"
   }
 }

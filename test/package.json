@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "ejs": "^3.1.6",
-    "express": "^4.17.3"
+    "express": "^4.17.3",
+    "stripe-mongoose-api": "^1.0.1",
+    "mongoose": "^6.2.4"
   }
 }

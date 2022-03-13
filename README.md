@@ -13,7 +13,6 @@ It will provide you:
 ```
 npm install stripe-mongoose-api
 ```
-Stripe Mongoose Api does not require `stripe`, `mongoose`, `crypto` or `colors` dependencies directly but expects you to have these dependencies installed.
 
 ## Usage
 ### Plugin Stripe Mongoose Api

@@ -4,7 +4,7 @@ Stripe Mongoose Api is a [Mongoose plugin](https://github.com/Automattic/mongoos
 It will provide you:
 - Simple way to manage all the users for your api
 - Highly customizable code for all your projects
-- Ready in few lines of code
+- Ready in a few lines of code
 <br/>
 
 ![wallpaper money](https://user-images.githubusercontent.com/94981444/157924374-ad4e08de-af6c-4adf-8f1e-a12b197706b9.png)

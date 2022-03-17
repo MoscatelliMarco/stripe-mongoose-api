@@ -72,6 +72,8 @@ For a complete example implementing all the features of this projects see the te
 
 ## Documentation
 
+*You can find a  [tutorial here](https://dev.to/moscatellimarco/monetize-your-api-using-stripe-mongoose-api-4k1o)*
+
 ### Instance methods
 Methods directly connected to the user.
 For example to use customerRecords function use

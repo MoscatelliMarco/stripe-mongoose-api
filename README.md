@@ -106,5 +106,3 @@ This method will simply provide a new apiKey to then user and the it will return
 ## License
 
 Stripe Mongoose Api is licenses under the [MIT license](https://opensource.org/licenses/MIT).
-
-**Free Software, Hell Yeah!**
